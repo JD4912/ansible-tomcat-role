@@ -1,38 +1,127 @@
-Role Name
-=========
+# Ansible Role: Tomcat
 
-A brief description of the role goes here.
+This Ansible role installs and configures Apache Tomcat on Debian and Red Hat-based systems.
 
-Requirements
-------------
+## Requirements
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- Ansible 2.9 or higher
+- Target system must be either Debian-based (Ubuntu, Debian) or Red Hat-based (RHEL, CentOS, Fedora)
+- Root or sudo privileges on the target system
 
-Role Variables
---------------
+## Role Variables
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+### Default Variables
 
-Dependencies
-------------
+```yaml
+# Tomcat version to install
+tomcat_version: "11.0.0"  # Placeholder for Tomcat 11
+tomcat_major_version: "11"
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+# Installation paths
+tomcat_install_dir: "/opt/tomcat"
+tomcat_home: "/var/lib/tomcat"
 
-Example Playbook
-----------------
+# User and group settings
+tomcat_user: "tomcat"
+tomcat_group: "tomcat"
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# Port configuration
+tomcat_port: "8080"
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+# Java configuration
+java_package: "openjdk-17-jdk"  # Default to JDK 17
+```
 
-License
--------
+### Available Tomcat Versions
+
+```yaml
+tomcat_versions_available:
+  "11":
+    - "11.0.0"  # Placeholder; update when released
+  "10":
+    - "10.1.19"
+  "9":
+    - "9.0.87"
+  "8":
+    - "8.5.99"
+```
+
+### Available Java Versions
+
+```yaml
+java_versions_available:
+  debian:
+    - "openjdk-8-jdk"
+    - "openjdk-11-jdk"
+    - "openjdk-17-jdk"
+    - "openjdk-21-jdk"
+  redhat:
+    - "java-1.8.0-openjdk-devel"
+    - "java-11-openjdk-devel"
+    - "java-17-openjdk-devel"
+    - "java-21-openjdk-devel"
+```
+
+## Dependencies
+
+- Java JDK (OpenJDK 17 by default)
+- Systemd (for service management)
+- Curl (for downloading Tomcat)
+
+## Example Playbook
+
+```yaml
+---
+- name: Install Tomcat on Ubuntu and Red Hat
+  hosts: all
+  become: yes
+  vars:
+    tomcat_version: "10.1.19"  # Specify your desired Tomcat version
+    tomcat_major_version: "10"
+    java_package: "openjdk-17-jdk"  # Specify your desired Java version
+  roles:
+    - tomcat
+```
+
+## Features
+
+- Installs and configures Apache Tomcat
+- Sets up Tomcat user and group
+- Configures systemd service
+- Manages Java dependencies
+- Configures proper permissions
+- Sets up JAVA_HOME environment
+- Downloads and extracts Tomcat tarball
+- Ensures service is enabled and started
+
+## Installation Process
+
+1. Installs required Java version
+2. Creates Tomcat user and group
+3. Sets up installation directory
+4. Downloads and extracts Tomcat
+5. Configures systemd service
+6. Sets proper permissions
+7. Starts and enables Tomcat service
+
+## Verification
+
+After installation, you can verify Tomcat is running by:
+
+1. Checking the service status:
+   ```bash
+   systemctl status tomcat
+   ```
+
+2. Accessing the default page:
+   ```
+   http://your-server:8080
+   ```
+
+## License
 
 BSD
 
-Author Information
-------------------
+## Author Information
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Your Name/Organization
