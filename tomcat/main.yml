@@ -1,0 +1,11 @@
+---
+- name: Install Tomcat on Ubuntu and Red Hat
+  hosts: localhost
+  become: yes
+  vars:
+    tomcat_version: "10.1.40"  # Update to the actual release version when available
+    tomcat_major_version: "10"
+    java_package: "openjdk-17-jdk"         # Recommended for future Tomcat versions
+    redhat_java_package: "java-17-openjdk-devel"  # For Red Hat
+  roles:
+    - tomcat

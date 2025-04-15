@@ -1,0 +1,24 @@
+---
+- name: Install Tomcat on Ubuntu and Red Hat
+  hosts: localhost
+  become: yes
+  vars:
+    tomcat_version: "10.1.19"  # Update to the actual release version when available
+    tomcat_major_version: "10"
+    java_package: "openjdk-17-jdk"         # Recommended for future Tomcat versions
+    redhat_java_package: "java-17-openjdk-devel"  # For Red Hat
+  roles:
+    - tomcat
+
+# - name: Deploy Java using custom role
+#   hosts: all
+#   become: true
+#   roles:
+#     - role: java
+#       java_version: '17'
+
+# - name: Install certbot on nginx server
+#   hosts: all
+#   become: yes
+#   roles:
+#     - role: Devops-internal-Ansible

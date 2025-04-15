@@ -1,0 +1,15 @@
+---
+# OS-specific variables
+tomcat_service_name: "tomcat"
+
+# Debian/Ubuntu-specific
+debian_java_package: "{{ java_package }}"
+debian_tomcat_deps:
+  - "{{ debian_java_package }}"
+  - "curl"
+
+# Red Hat-specific
+redhat_java_package: "java-11-openjdk-devel"
+redhat_tomcat_deps:
+  - "{{ redhat_java_package }}"
+  - "curl"

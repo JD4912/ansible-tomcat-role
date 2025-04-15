@@ -1,0 +1,170 @@
+---
+- name: Check if Java is installed on Debian-based systems
+  ansible.builtin.command: "java -version"
+  register: java_check_debian
+  failed_when: false
+  changed_when: false
+  when: ansible_os_family == "Debian"
+
+- name: Fail if JDK is not installed on Debian-based systems
+  ansible.builtin.fail:
+    msg: "JDK is not installed. Please install openjdk-17-jdk manually or let the role install it."
+  when:
+    - ansible_os_family == "Debian"
+    - java_check_debian is defined and java_check_debian.skipped is not defined and java_check_debian.rc != 0
+    - java_package != "openjdk-17-jdk"
+
+- name: Install Java prerequisites for Debian-based systems if not installed
+  ansible.builtin.apt:
+    name: "{{ debian_tomcat_deps }}"
+    state: present
+    update_cache: yes
+  when: 
+    - ansible_os_family == "Debian"
+    - java_check_debian is defined and java_check_debian.skipped is not defined and java_check_debian.rc != 0
+
+- name: Check if Java is installed on Red Hat-based systems
+  ansible.builtin.command: "java -version"
+  register: java_check_redhat
+  failed_when: false
+  changed_when: false
+  when: ansible_os_family == "RedHat"
+
+- name: Fail if JDK is not installed on Red Hat-based systems
+  ansible.builtin.fail:
+    msg: "JDK is not installed. Please install java-17-openjdk-devel manually or let the role install it."
+  when:
+    - ansible_os_family == "RedHat"
+    - java_check_redhat is defined and java_check_redhat.skipped is not defined and java_check_redhat.rc != 0
+    - redhat_java_package != "java-17-openjdk-devel"
+
+- name: Install Java prerequisites for Red Hat-based systems if not installed
+  ansible.builtin.yum:
+    name: "{{ redhat_tomcat_deps }}"
+    state: present
+  when: 
+    - ansible_os_family == "RedHat"
+    - java_check_redhat is defined and java_check_redhat.skipped is not defined and java_check_redhat.rc != 0
+
+- name: Install additional prerequisites (curl) for Debian-based systems
+  ansible.builtin.apt:
+    name: "curl"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install additional prerequisites (curl) for Red Hat-based systems
+  ansible.builtin.yum:
+    name: "curl"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Detect JAVA_HOME path
+  ansible.builtin.shell: >
+    if [ "{{ ansible_os_family }}" = "Debian" ]; then
+      update-alternatives --list java | grep -m 1 'java$' | xargs dirname | xargs dirname || 
+      dpkg -L {{ java_package }} | grep -m 1 '/bin/java$' | xargs dirname | xargs dirname || 
+      find /usr/lib/jvm -maxdepth 1 -name 'java-*-openjdk-*' -type d | sort -r | head -n 1 || 
+      echo "fallback";
+    else
+      alternatives --list | grep java | grep -m 1 'java$' | xargs dirname | xargs dirname || 
+      rpm -ql {{ redhat_java_package }} | grep -m 1 '/bin/java$' | xargs dirname | xargs dirname || 
+      find /usr/lib/jvm -maxdepth 1 -name 'java-*-openjdk-*' -type d | sort -r | head -n 1 || 
+      echo "fallback";
+    fi
+  register: java_home_result
+  changed_when: false
+  failed_when: false
+  when: true
+
+- name: Set JAVA_HOME fact with explicit path
+  ansible.builtin.set_fact:
+    java_home: >-
+      {% if java_home_result.stdout is defined and java_home_result.stdout != '' and java_home_result.stdout != 'fallback' %}
+      {{ java_home_result.stdout | trim }}
+      {% else %}
+      {{ '/usr/lib/jvm/java-17-openjdk-amd64' if ansible_os_family == 'Debian' else '/usr/lib/jvm/java-17-openjdk' }}
+      {% endif %}
+  when: true
+
+- name: Create Java environment file
+  ansible.builtin.template:
+    src: java.env.j2
+    dest: "/etc/tomcat/java.env"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Validate JAVA_HOME points to a JDK
+  ansible.builtin.stat:
+    path: "{{ java_home }}/bin/javac"
+  register: javac_check
+  failed_when: not javac_check.stat.exists
+  when: java_home is defined
+  ignore_errors: true
+
+- name: Debug JAVA_HOME final value
+  ansible.builtin.debug:
+    var: java_home
+
+- name: Create Tomcat user
+  ansible.builtin.user:
+    name: "{{ tomcat_user }}"
+    shell: /bin/false
+    create_home: no
+    system: yes
+
+- name: Create Tomcat group
+  ansible.builtin.group:
+    name: "{{ tomcat_group }}"
+    system: yes
+
+- name: Download Tomcat tarball
+  ansible.builtin.get_url:
+    url: "https://archive.apache.org/dist/tomcat/tomcat-{{ tomcat_major_version }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    dest: "/tmp/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    mode: "0644"
+  ignore_errors: yes  # Tomcat 11 isn't released yet
+
+- name: Ensure Tomcat installation directory exists
+  ansible.builtin.file:
+    path: "{{ tomcat_install_dir }}"
+    state: directory
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+    mode: "0755"
+
+- name: Extract Tomcat tarball
+  ansible.builtin.unarchive:
+    src: "/tmp/apache-tomcat-{{ tomcat_version }}.tar.gz"
+    dest: "{{ tomcat_install_dir }}"
+    remote_src: yes
+    creates: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}"
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+  register: tomcat_extracted
+
+- name: Ensure Tomcat scripts are executable
+  ansible.builtin.file:
+    path: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/{{ item }}"
+    mode: "0755"
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+  loop:
+    - startup.sh
+    - shutdown.sh
+
+- name: Copy Tomcat systemd service file
+  ansible.builtin.template:
+    src: tomcat.service.j2
+    dest: "/etc/systemd/system/{{ tomcat_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Tomcat
+
+- name: Ensure Tomcat service is enabled and started
+  ansible.builtin.systemd:
+    name: "{{ tomcat_service_name }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes

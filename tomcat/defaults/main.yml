@@ -1,0 +1,30 @@
+---
+tomcat_install_dir: "/opt/tomcat"
+tomcat_user: "tomcat"
+tomcat_group: "tomcat"
+tomcat_port: "8080"
+tomcat_version: "11.0.0"  # Placeholder for Tomcat 11
+tomcat_major_version: "11"
+java_package: "openjdk-17-jdk"
+
+tomcat_versions_available:
+  "11":
+    - "11.0.0"  # Placeholder; update when released
+  "10":
+    - "10.1.19"
+  "9":
+    - "9.0.87"
+  "8":
+    - "8.5.99"
+
+java_versions_available:
+  debian:
+    - "openjdk-8-jdk"
+    - "openjdk-11-jdk"
+    - "openjdk-17-jdk"
+    - "openjdk-21-jdk"  # Added JDK 21
+  redhat:
+    - "java-1.8.0-openjdk-devel"
+    - "java-11-openjdk-devel"
+    - "java-17-openjdk-devel"
+    - "java-21-openjdk-devel"
